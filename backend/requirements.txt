@@ -1,0 +1,8 @@
+email
+fastapi
+pydantic
+pymongo
+dotenv
+smtplib
+pandas
+requests
