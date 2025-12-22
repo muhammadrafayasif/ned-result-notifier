@@ -15,9 +15,9 @@
 .results-form {
   background: #ffffff;
   padding: 20px;
-  width: 100%;
-  max-width: 420px;
-  border-radius: 12px;
+  width: 90%;
+  max-width: 480px;
+  border-radius: 8px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
 
