@@ -24,7 +24,7 @@ const ResultsNotification = () => {
     setMessage("");
 
     try {
-      const response = await fetch("http://localhost:8000/add", {
+      const response = await fetch("http://ned-result-notifier.vercel.app/add", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
