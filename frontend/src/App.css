@@ -4,7 +4,7 @@
 
 
 .results-container {
-  min-height: 100vh;
+  min-height: 100dvh;
   background: linear-gradient(135deg, #ff7676, #fc2929);
   display: flex;
   justify-content: center;
@@ -14,10 +14,10 @@
 
 .results-form {
   background: #ffffff;
-  padding: 30px;
+  padding: 20px;
   width: 100%;
   max-width: 420px;
-  border-radius: 10px;
+  border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
 
