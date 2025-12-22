@@ -7,6 +7,10 @@ import requests as r
 import pandas as pd
 dotenv.load_dotenv()
 
+client = pymongo.MongoClient(os.getenv("MONGODB_URL"))
+db = client["users"]
+col = db["users"]
+
 class User(BaseModel):
     email : str
     department: str
@@ -39,9 +43,6 @@ def check_results():
     webpage = r.get('https://www.neduet.edu.pk/examination_results').content
     df = pd.read_html(webpage)[1]
 
-    client = pymongo.MongoClient(os.getenv("MONGODB_URL"))
-    db = client["users"]
-    col = db["users"]
     for user in col.find({"notify": True}):
         status = df.iloc[int(user['department'])].iloc[int(user['year'])]
         if status == 'View':

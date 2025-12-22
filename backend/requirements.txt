@@ -1,7 +1,8 @@
 fastapi
 pydantic
 pymongo
-dotenv
+python-dotenv
 pandas
 requests
 uvicorn
+lxml
