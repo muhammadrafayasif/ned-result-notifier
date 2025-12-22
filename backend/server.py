@@ -45,7 +45,7 @@ def check_results():
 
     for user in col.find({"notify": True}):
         status = df.iloc[int(user['department'])].iloc[int(user['year'])]
-        if status == 'View':
+        if 'View' in status:
             send_email(user['email'])
             col.update_one(
                 {"_id": user["_id"]},

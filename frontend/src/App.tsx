@@ -124,7 +124,7 @@ const ResultsNotification = () => {
           <option value="2">2nd Year</option>
           <option value="3">3rd Year</option>
           <option value="4">4th Year</option>
-          {formData.department == "Architecture" && <option value="5">5th Year</option>}
+          {formData.department == "0" && <option value="5">5th Year</option>}
         </select>
 
         <button type="submit" disabled={status === "loading"}>
