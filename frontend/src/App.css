@@ -1,3 +1,8 @@
+* {
+  box-sizing: border-box;
+}
+
+
 .results-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #ff7676, #fc2929);
