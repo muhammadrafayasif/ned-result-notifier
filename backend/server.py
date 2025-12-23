@@ -42,19 +42,23 @@ def store_details(data : User):
 def check_results():
     webpage = r.get('https://www.neduet.edu.pk/examination_results').content
     df = pd.read_html(webpage)[1]
-
-    for user in col.find({"notify": True}):
-        status = df.iloc[int(user['department'])].iloc[int(user['year'])]
-        if 'View' in status:
-            send_email(user['email'])
-            col.update_one(
-                {"_id": user["_id"]},
-                {"$set": {"notify": False}}
-            )
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login("ned.resultnotifier@gmail.com", os.getenv("PASSWORD"))
+        for user in col.find({"notify": True}):
+            status = df.iloc[int(user['department'])].iloc[int(user['year'])]
+            if 'View' in status:
+                try:
+                    send_email(user['email'], server)
+                    col.update_one(
+                        {"_id": user["_id"]},
+                        {"$set": {"notify": False}}
+                    )
+                except Exception as e:
+                    print("Exception occurred: ", e)
 
     return Response(status_code=200)
 
-def send_email(to_email: str, welcome: bool = False):
+def send_email(to_email: str, server, welcome: bool = False):
     msg = EmailMessage()
     msg["Subject"] = "NEDUET Results Notification"
     msg["From"] = "ned.resultnotifier@gmail.com"
@@ -82,6 +86,4 @@ Regards,
 NEDUET Results Bot
 """)
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login("ned.resultnotifier@gmail.com", os.getenv("PASSWORD"))
-        server.send_message(msg)
+    server.send_message(msg)
