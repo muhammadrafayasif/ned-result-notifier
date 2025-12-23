@@ -35,7 +35,9 @@ def store_details(data : User):
         raise HTTPException(409, "The following email already exists in the database.")
     else: 
         col.insert_one({"email": data.email, "department": data.department, "year": data.year, "notify": True})
-        send_email(data.email, welcome=True)
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login("ned.resultnotifier@gmail.com", os.getenv("PASSWORD"))
+            send_email(data.email, server, welcome=True)
         return Response(status_code=200)
 
 @app.get("/check_results")
