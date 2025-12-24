@@ -44,6 +44,9 @@ def store_details(data : User):
 def check_results():
     webpage = r.get('https://www.neduet.edu.pk/examination_results').content
     df = pd.read_html(webpage)[1]
+    df_ = df.astype(str).apply(lambda col: col.str.fullmatch("-", case=False, na=False)).any(axis=1)
+    if (len(df[df_])): return Response(status_code=200, content="All results are already released.")
+    
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login("ned.resultnotifier@gmail.com", os.getenv("PASSWORD"))
         for user in col.find({"notify": True}):

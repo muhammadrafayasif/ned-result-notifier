@@ -54,7 +54,10 @@ const ResultsNotification = () => {
   return (
     <div className="results-container">
       <form className="results-form" onSubmit={handleForm}>
-        <h2>NEDUET Results Notification</h2>
+        <div className={`status-message loading`}>
+          All results have now been officially released, you may view them from the NEDUET website.  
+        </div>
+        <h2>NEDUET Results Notifier</h2>
         <p>Enter your details to get emailed when results are released.</p>
 
         <label>Email Address</label>
