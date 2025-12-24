@@ -54,9 +54,8 @@ def check_results():
             if 'View' in status:
                 try:
                     send_email(user['email'], server)
-                    col.update_one(
-                        {"_id": user["_id"]},
-                        {"$set": {"notify": False}}
+                    col.delete_one(
+                        {"_id": user["_id"]}
                     )
                 except Exception as e:
                     print("Exception occurred: ", e)
