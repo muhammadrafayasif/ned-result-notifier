@@ -29,3 +29,8 @@ This is a website that sends you an email whenever your respective department re
 * Those details are stored in the MongoDB database through a FastAPI endpoint (Sample entry: `{"email": EMAIL, "department": "DEPT", notify: true}`)
 * Using `cron-jobs.org`, the FastAPI endpoint `/check_results` is called every minute
 * When results are found, users are sent an email
+
+## License
+This project is released under the [MIT License](LICENSE).
+
+Feel free to modify and adapt it for your institution or personal use.
