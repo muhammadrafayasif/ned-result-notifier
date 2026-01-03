@@ -5,16 +5,20 @@ const ResultsNotification = () => {
   const [formData, setFormData] = useState({
     email: "",
     department: "",
-    year: ""
+    year: "",
   });
 
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
   const [message, setMessage] = useState("");
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -24,13 +28,16 @@ const ResultsNotification = () => {
     setMessage("");
 
     try {
-      const response = await fetch("https://ned-result-notifier.vercel.app/add", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(formData)
-      });
+      const response = await fetch(
+        "https://ned-result-notifier.vercel.app/add",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
 
       if (!response.ok) {
         const err = await response.json();
@@ -40,7 +47,7 @@ const ResultsNotification = () => {
       setFormData({
         email: "",
         department: "",
-        year: ""
+        year: "",
       });
 
       setStatus("success");
@@ -55,7 +62,8 @@ const ResultsNotification = () => {
     <div className="results-container">
       <form className="results-form" onSubmit={handleForm}>
         <div className={`status-message loading`}>
-          All results have now been officially released, you may view them from the NEDUET website.  
+          All results have now been officially released, you may view them from
+          the NEDUET website.
         </div>
         <h2>NEDUET Results Notifier</h2>
         <p>Enter your details to get emailed when results are released.</p>
@@ -134,11 +142,7 @@ const ResultsNotification = () => {
           {status === "loading" ? "Submitting..." : "Notify Me"}
         </button>
 
-        {message && (
-          <div className={`status-message ${status}`}>
-            {message}
-          </div>
-        )}
+        {message && <div className={`status-message ${status}`}>{message}</div>}
       </form>
     </div>
   );
