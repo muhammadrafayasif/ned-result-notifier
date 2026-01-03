@@ -1,7 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
 
 const ResultsNotification = () => {
+  const [allResultsReleased, setResultsReleased] = useState(false);
+  const [exam, setExam] = useState("");
+
+  useEffect(() => {
+    fetch("https://ned-result-notifier.vercel.app/get_details")
+      .then((res) => res.json())
+      .then((data) => {
+        setResultsReleased(data.all_results_released);
+        setExam(data.exam);
+      })
+      .catch((err) => {
+        console.error("Error fetching details:", err);
+      });
+  }, []);
+
   const [formData, setFormData] = useState({
     email: "",
     department: "",
@@ -61,11 +76,14 @@ const ResultsNotification = () => {
   return (
     <div className="results-container">
       <form className="results-form" onSubmit={handleForm}>
-        <div className={`status-message loading`}>
-          All results have now been officially released, you may view them from
-          the NEDUET website.
-        </div>
+        {allResultsReleased && (
+          <div className={`status-message loading`}>
+            All results have now been officially released, you may view them
+            from the NEDUET website.
+          </div>
+        )}
         <h2>NEDUET Results Notifier</h2>
+        {exam && <div className={`status-message success`}>{exam}</div>}
         <p>Enter your details to get emailed when results are released.</p>
 
         <label>Email Address</label>

@@ -45,6 +45,15 @@ def store_details(data : User):
             server.login("ned.resultnotifier@gmail.com", os.getenv("PASSWORD"))
             send_email(data.email, server, data.department, data.year, welcome=True)
         return Response(status_code=200)
+    
+@app.get("/get_details")
+def get_details():
+    webpage = r.get('https://www.neduet.edu.pk/examination_results').content
+    df = pd.read_html(webpage)[1]
+
+    EXAM = list(df.columns)[0][0].split('(')[1][:-1]
+    df_ = df.astype(str).apply(lambda col: col.str.fullmatch("-", case=False, na=False)).any(axis=1)
+    return {'all_results_released' : len(df[df_]) <= 1, 'exam': EXAM}
 
 @app.get("/check_results")
 def check_results():
