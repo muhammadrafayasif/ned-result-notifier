@@ -7,12 +7,12 @@ const ResultsNotification = () => {
   const [examName, setExam] = useState("");
 
   useEffect(() => {
-    fetch("https://ned-result-notifier.vercel.app/get_details")
+    fetch("http://127.0.0.1:8000/get_details")
       .then((res) => res.json())
       .then((data) => {
         setResultsReleased(data.all_results_released);
         setExam(data.exam_name);
-        if (!allResultsReleased) setSubmissionDisabled(false);
+        if (!data.all_results_released) setSubmissionDisabled(false);
       })
       .catch((err) => {
         console.error("Error fetching details:", err);
@@ -31,6 +31,8 @@ const ResultsNotification = () => {
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
+    // Konami code for no reason
+    if (e.target.value === "UUDDLRLRBAS") setSubmissionDisabled(false);
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -44,16 +46,13 @@ const ResultsNotification = () => {
     setMessage("");
 
     try {
-      const response = await fetch(
-        "https://ned-result-notifier.vercel.app/insert_user",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
-        }
-      );
+      const response = await fetch("http://127.0.0.1:8000/insert_user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
 
       if (!response.ok) {
         const err = await response.json();
@@ -77,6 +76,18 @@ const ResultsNotification = () => {
 
   return (
     <div className="results-container">
+      <div className="github-banner">
+        <a
+          href="https://www.github.com/muhammadrafayasif/ned-result-notifier"
+          target="_blank"
+        >
+          <img
+            src="https://cdn.pixabay.com/photo/2022/01/30/13/33/github-6980894_1280.png"
+            alt="GitHub Logo"
+          />
+          View on GitHub
+        </a>
+      </div>
       <form className="results-form" onSubmit={handleForm}>
         {allResultsReleased && (
           <div className={`status-message loading`}>

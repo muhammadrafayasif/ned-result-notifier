@@ -6,9 +6,37 @@
   min-height: 100dvh;
   background: linear-gradient(135deg, #ff7676, #fc2929);
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   font-family: Arial, Helvetica, sans-serif;
+}
+
+.github-banner {
+  background-color: #1a1e22;
+  cursor: pointer;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 15px 10px;
+  width: 90%;
+  max-width: 480px;
+  border-radius: 8px;
+  margin: 4px;
+}
+
+.github-banner a {
+  text-decoration: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.github-banner img {
+  width: 30px;
+  height: 30px;
 }
 
 .results-form {
@@ -68,6 +96,7 @@
 
 .results-form button:disabled {
   background: gray;
+  cursor: not-allowed;
 }
 
 .results-form button:hover:not(:disabled) {
