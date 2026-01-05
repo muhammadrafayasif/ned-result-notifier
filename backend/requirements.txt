@@ -2,9 +2,6 @@ fastapi
 uvicorn[standard]
 httpx
 python-dotenv
-aiosmtplib
 motor
 pydantic
-beautifulsoup4
 lxml
-pandas
