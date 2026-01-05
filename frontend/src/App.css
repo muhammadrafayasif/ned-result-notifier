@@ -2,7 +2,6 @@
   box-sizing: border-box;
 }
 
-
 .results-container {
   min-height: 100dvh;
   background: linear-gradient(135deg, #ff7676, #fc2929);
@@ -67,7 +66,11 @@
   transition: background 0.3s ease;
 }
 
-.results-form button:hover {
+.results-form button:disabled {
+  background: gray;
+}
+
+.results-form button:hover:not(:disabled) {
   background: rgb(193, 0, 0);
 }
 

@@ -3,14 +3,16 @@ import "./App.css";
 
 const ResultsNotification = () => {
   const [allResultsReleased, setResultsReleased] = useState(false);
-  const [exam, setExam] = useState("");
+  const [denySubmission, setSubmissionDisabled] = useState(true);
+  const [examName, setExam] = useState("");
 
   useEffect(() => {
-    fetch("https://ned-result-notifier.vercel.app/get_details")
+    fetch("http://127.0.0.1:8000/get_details")
       .then((res) => res.json())
       .then((data) => {
         setResultsReleased(data.all_results_released);
-        setExam(data.exam);
+        setExam(data.exam_name);
+        if (!allResultsReleased) setSubmissionDisabled(false);
       })
       .catch((err) => {
         console.error("Error fetching details:", err);
@@ -23,9 +25,7 @@ const ResultsNotification = () => {
     year: "",
   });
 
-  const [status, setStatus] = useState<
-    "idle" | "loading" | "success" | "error"
-  >("idle");
+  const [status, setStatus] = useState("idle");
   const [message, setMessage] = useState("");
 
   const handleChange = (
@@ -40,19 +40,17 @@ const ResultsNotification = () => {
   const handleForm = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setStatus("loading");
+    setSubmissionDisabled(true);
     setMessage("");
 
     try {
-      const response = await fetch(
-        "https://ned-result-notifier.vercel.app/add",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
-        }
-      );
+      const response = await fetch("http://127.0.0.1:8000/insert_user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
 
       if (!response.ok) {
         const err = await response.json();
@@ -67,6 +65,7 @@ const ResultsNotification = () => {
 
       setStatus("success");
       setMessage("You will be notified when results are released.");
+      setSubmissionDisabled(false);
     } catch (error: any) {
       setStatus("error");
       setMessage(error.message || "Something went wrong. Please try again.");
@@ -82,8 +81,8 @@ const ResultsNotification = () => {
             from the NEDUET website.
           </div>
         )}
+        {examName && <div className={`status-message success`}>{examName}</div>}
         <h2>NEDUET Results Notifier</h2>
-        {exam && <div className={`status-message success`}>{exam}</div>}
         <p>Enter your details to get emailed when results are released.</p>
 
         <label>Email Address</label>
@@ -156,7 +155,7 @@ const ResultsNotification = () => {
           {formData.department == "0" && <option value="5">5th Year</option>}
         </select>
 
-        <button type="submit" disabled={status === "loading"}>
+        <button type="submit" disabled={denySubmission}>
           {status === "loading" ? "Submitting..." : "Notify Me"}
         </button>
 
