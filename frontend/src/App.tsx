@@ -7,7 +7,7 @@ const ResultsNotification = () => {
   const [examName, setExam] = useState("");
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/get_details")
+    fetch("https://ned-result-notifier.vercel.app/get_details")
       .then((res) => res.json())
       .then((data) => {
         setResultsReleased(data.all_results_released);
@@ -46,13 +46,16 @@ const ResultsNotification = () => {
     setMessage("");
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/insert_user", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      const response = await fetch(
+        "https://ned-result-notifier.vercel.app/insert_user",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
 
       if (!response.ok) {
         const err = await response.json();
