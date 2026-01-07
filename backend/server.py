@@ -1,4 +1,4 @@
-import httpx, asyncio, os, dotenv, resend
+import httpx, asyncio, os, dotenv, resend, uuid
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -29,6 +29,7 @@ class User(BaseModel):
     email : str
     department: int
     year: int
+    examName: str
 
 app = FastAPI()
 
@@ -46,9 +47,20 @@ async def store_details(data : User):
     if await col.find_one({"email": data.email}): 
         raise HTTPException(409, "The following email already exists in the database.")
     else: 
-        await col.insert_one({"email": data.email, "department": int(data.department), "year": int(data.year), "notify": True})
-        await send_email(data.email, data.department, data.year, first_time=True)
+        uniqueID = str(uuid.uuid4())
+        await col.insert_one({"email": data.email, "department": int(data.department), "year": int(data.year), "exam": data.examName, "uniqueID": uniqueID, "notify": True})
+        await send_email(data.email, data.department, data.year, uniqueID, data.examName, first_time=True)
         return Response(status_code=200)
+    
+@app.get("/remove_user")
+async def remove_user(id : str):
+    col = await get_mongo_collection()
+    user = await col.delete_one({"uniqueID": id})
+    if user.deleted_count == 1:
+        return Response(status_code=200, content="User successfully deleted.")
+    else:
+        raise HTTPException(status_code=500, detail="Failed to delete user.")
+    
     
 @app.get("/get_details")
 async def get_details():
@@ -79,14 +91,14 @@ async def check_results():
         for td in tr.xpath('./td'):
             links = [a.get('href') for a in td.xpath('.//a[@href]')]
             row.append(links)
-        images.append(row)
+        if row != []: images.append(row)
     
     tasks = []
     users_to_update = []
     async for user in col.find({'notify': True}):
         results = images[user['department']][user['year']]
         if results:
-            tasks.append(send_email(user['email'], user['department'], user['year'], attachment_urls = results))
+            tasks.append(send_email(user['email'], user['department'], user['year'], user['uniqueID'], attachment_urls = results))
             users_to_update.append(user['_id'])
 
     for i in range(0, len(tasks), 10):
@@ -96,7 +108,7 @@ async def check_results():
         await col.update_many({'_id': {'$in': users_to_update}}, {'$set': {'notify': False}})
     return Response(status_code=200)
 
-async def send_email(to_email, department, year, attachment_urls = None, first_time = False):
+async def send_email(to_email, department, year, uniqueID, examName, attachment_urls = None, first_time = False):
     department = DEPTS[department]
     year = YEARS[year]
 
@@ -108,7 +120,7 @@ async def send_email(to_email, department, year, attachment_urls = None, first_t
         body = f"""
 Hello, <br><br>
 
-The results for the <b>Department of {department}, {year} Year</b> have been officially released on the NEDUET website.
+The results for the <b>Department of {department}, {year} Year</b> for the <b>{examName.title()}</b> have been officially released on the NEDUET website.
 You can view your results from here (https://www.neduet.edu.pk/examination_results) or from the attachments provided.
 <br>
 If this tool was helpful for you, please feel free to star the repository over here (https://github.com/muhammadrafayasif/ned-result-notifier).<br>
@@ -123,8 +135,10 @@ NEDUET Results Bot
         body = f"""
 Hello, <br><br>
 
-You will be notified as soon as the results for the <b>Department of {department}, {year}</b> Year are released officially on the NEDUET website. 
+You will be notified as soon as the results for the <b>Department of {department}, {year}</b> Year for the <b>{examName.title()}</b> are released officially on the NEDUET website. 
 <br><br>
+Feel free to star the repository over here (https://github.com/muhammadrafayasif/ned-result-notifier), all contributions are welcome! <br><br>
+Accidentally chose the wrong details? Click <a href="https://www.ned-result-notifier.vercel.app/remove_user?id={uniqueID}">here</a> to remove yourself from the database <br><br>
 Regards, <br>
 NEDUET Results Bot
 """
