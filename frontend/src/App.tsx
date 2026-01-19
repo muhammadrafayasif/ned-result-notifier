@@ -79,17 +79,20 @@ const ResultsNotification = () => {
 
   return (
     <div className="results-container">
-      <div className="github-banner">
-        <a
-          href="https://www.github.com/muhammadrafayasif/ned-result-notifier"
-          target="_blank"
-        >
-          <img
-            src="https://cdn.pixabay.com/photo/2022/01/30/13/33/github-6980894_1280.png"
-            alt="GitHub Logo"
-          />
-          View on GitHub
-        </a>
+      <div
+        className="github-banner"
+        onClick={() =>
+          window.open(
+            "https://www.github.com/muhammadrafayasif/ned-result-notifier",
+            "_blank"
+          )
+        }
+      >
+        <img
+          src="https://cdn.pixabay.com/photo/2022/01/30/13/33/github-6980894_1280.png"
+          alt="GitHub Logo"
+        />
+        View on GitHub
       </div>
       <form className="results-form" onSubmit={handleForm}>
         {allResultsReleased && (
