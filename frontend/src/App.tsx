@@ -1,34 +1,35 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
 import "./App.css";
 import {
-  Building2,
-  Atom,
-  Brain,
-  TrendingUp,
-  Code,
-  Lock,
-  Database,
-  BookOpen,
-  DollarSign,
-  BookMarked,
-  Gamepad2,
-  Beaker,
-  Briefcase,
-  Layers,
-  Car,
   Activity,
-  Droplets,
-  HardHat,
-  Cpu,
-  Hammer,
-  Zap,
-  Wifi,
-  UtensilsCrossed,
-  Factory,
+  Atom,
+  Beaker,
+  BookMarked,
+  BookOpen,
   Box,
-  Wrench,
-  Wind,
+  Brain,
+  Briefcase,
+  Building2,
+  Car,
+  Code,
+  Cpu,
+  Database,
+  DollarSign,
+  Droplets,
+  Factory,
+  Gamepad2,
+  Hammer,
+  HardHat,
+  Layers,
+  Lock,
   Radio,
+  TrendingUp,
+  UtensilsCrossed,
+  Wrench,
+  Wifi,
+  Wind,
+  Zap,
 } from "lucide-react";
 
 const DEPARTMENTS = [
@@ -78,80 +79,46 @@ const authHeaders = {
 
 const apiUrl = (path: string) => `${BASE_API.replace(/\/$/, "")}${path}`;
 
-const isDeletePage = window.location.pathname === "/user";
+type FormDataState = {
+  email: string;
+  department: string;
+  year: string;
+};
 
-const ResultsNotification = () => {
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/user" element={<DeleteUserPage />} />
+      <Route path="*" element={<HomePage />} />
+    </Routes>
+  );
+}
+
+function HomePage() {
   const [allResultsReleased, setResultsReleased] = useState(false);
   const [denySubmission, setSubmissionDisabled] = useState(true);
   const [examName, setExam] = useState("");
+  const [formData, setFormData] = useState<FormDataState>({
+    email: "",
+    department: "",
+    year: "",
+  });
+  const [status, setStatus] = useState("idle");
+  const [message, setMessage] = useState("");
   const carouselRef = useRef<HTMLDivElement>(null);
-  const deleteRequestSentRef = useRef(false);
-  const [deleteStatus, setDeleteStatus] = useState<"loading" | "success" | "error">("loading");
-  const [deleteMessage, setDeleteMessage] = useState("Removing your details...");
 
   useEffect(() => {
-    if (isDeletePage) {
-      if (deleteRequestSentRef.current) {
-        return;
-      }
-
-      deleteRequestSentRef.current = true;
-
-      const params = new URLSearchParams(window.location.search);
-      const id = params.get("id");
-
-      if (!id) {
-        setDeleteStatus("error");
-        setDeleteMessage("Missing deletion id.");
-        return;
-      }
-
-      fetch(apiUrl(`/remove_user?id=${encodeURIComponent(id)}`), {
-        headers: authHeaders,
-      })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("We could not delete your entry.");
-          }
-
-          setDeleteStatus("success");
-          setDeleteMessage("Your email has been removed from the notification list.");
-        })
-        .catch((error: any) => {
-          setDeleteStatus("error");
-          setDeleteMessage(error.message || "Something went wrong while removing your entry.");
-        });
-
-      return;
-    }
-
-    fetch(apiUrl("/get_details"), {
-      headers: authHeaders,
-    })
+    fetch(apiUrl("/get_details"), { headers: authHeaders })
       .then((res) => res.json())
       .then((data) => {
         setResultsReleased(data.all_results_released);
         setExam(data.exam_name);
         if (!data.all_results_released) setSubmissionDisabled(false);
       })
-      .catch((err) => {
-        console.error("Error fetching details:", err);
-      });
+      .catch((err) => console.error("Error fetching details:", err));
   }, []);
 
-  const [formData, setFormData] = useState({
-    email: "",
-    department: "",
-    year: "",
-  });
-
-  const [status, setStatus] = useState("idle");
-  const [message, setMessage] = useState("");
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    // Konami code for no reason
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     if (e.target.value === "UUDDLRLRBAS") setSubmissionDisabled(false);
     setFormData({
       ...formData,
@@ -168,22 +135,19 @@ const ResultsNotification = () => {
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!carouselRef.current) return;
-    
+
     const startX = e.clientX;
     const startScrollLeft = carouselRef.current.scrollLeft;
-    const isDragReference = { isDragging: false };
+    const isDragging = { current: false };
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       const distance = Math.abs(moveEvent.clientX - startX);
-      if (!isDragReference.isDragging && distance > 5) {
-        isDragReference.isDragging = true;
+      if (!isDragging.current && distance > 5) {
+        isDragging.current = true;
       }
 
-      if (isDragReference.isDragging) {
-        const x = moveEvent.clientX - startX;
-        if (carouselRef.current) {
-          carouselRef.current.scrollLeft = startScrollLeft - x;
-        }
+      if (isDragging.current && carouselRef.current) {
+        carouselRef.current.scrollLeft = startScrollLeft - (moveEvent.clientX - startX);
       }
     };
 
@@ -197,13 +161,12 @@ const ResultsNotification = () => {
   };
 
   const scroll = (direction: "left" | "right") => {
-    if (carouselRef.current) {
-      const scrollAmount = 300;
-      carouselRef.current.scrollBy({
-        left: direction === "left" ? -scrollAmount : scrollAmount,
-        behavior: "smooth",
-      });
-    }
+    if (!carouselRef.current) return;
+
+    carouselRef.current.scrollBy({
+      left: direction === "left" ? -300 : 300,
+      behavior: "smooth",
+    });
   };
 
   const handleForm = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -213,29 +176,21 @@ const ResultsNotification = () => {
     setMessage("");
 
     try {
-      const response = await fetch(
-        apiUrl("/insert_user"),
-        {
-          method: "POST",
-          headers: {
-            ...authHeaders,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ ...formData, examName }),
-        }
-      );
+      const response = await fetch(apiUrl("/insert_user"), {
+        method: "POST",
+        headers: {
+          ...authHeaders,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...formData, examName }),
+      });
 
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.detail || "Submission failed");
       }
 
-      setFormData({
-        email: "",
-        department: "",
-        year: "",
-      });
-
+      setFormData({ email: "", department: "", year: "" });
       setStatus("success");
       setMessage("You will be notified when results are released.");
       setSubmissionDisabled(false);
@@ -247,162 +202,165 @@ const ResultsNotification = () => {
 
   return (
     <div className="results-container">
-      {isDeletePage ? (
-        <div className="results-form delete-page">
-          <div className={`delete-icon ${deleteStatus}`}>
-            {deleteStatus === "success" ? "✓" : deleteStatus === "error" ? "!" : "…"}
+      <div
+        className="github-banner"
+        onClick={() => window.open("https://www.github.com/muhammadrafayasif/ned-result-notifier", "_blank")}
+      >
+        <img src="/github.webp" alt="GitHub Logo" />
+        Star on GitHub
+      </div>
+
+      <form className="results-form" onSubmit={handleForm}>
+        {examName && <div className="status-message success exam-name">{examName}</div>}
+
+        {allResultsReleased && (
+          <div className="status-message loading">
+            All results have now been officially released, you may view them from the NEDUET website.
           </div>
-          <h1 className="delete-title">
-            {deleteStatus === "success" ? "User Deleted" : deleteStatus === "error" ? "Deletion Failed" : "Removing User"}
-          </h1>
-          <p className="delete-message">{deleteMessage}</p>
-          <button
-            type="button"
-            className="submit-btn"
-            onClick={() => (window.location.href = "/")}
-          >
-            Back to Home
-          </button>
+        )}
+
+        <div className="form-header">
+          <h1>NEDUET Results Notifier</h1>
         </div>
-      ) : (
-        <>
-          <div
-            className="github-banner"
-            onClick={() =>
-              window.open(
-                "https://www.github.com/muhammadrafayasif/ned-result-notifier",
-                "_blank"
-              )
-            }
-          >
-            <img
-              src="/github.webp"
-              alt="GitHub Logo"
-            />
-            Star on GitHub
-          </div>
 
-          <form className="results-form" onSubmit={handleForm}>
-            {examName && <div className={`status-message success exam-name`}>{examName}</div>}
+        <div className="form-section">
+          <label className="section-label">Email Address</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+            placeholder="you@cloud.neduet.edu.pk"
+            className="form-input"
+          />
+        </div>
 
-            {allResultsReleased && (
-              <div className={`status-message loading`}>
-                All results have now been officially released, you may view them
-                from the NEDUET website.
-              </div>
-            )}
-
-            <div className="form-header">
-              <h1>NEDUET Results Notifier</h1>
-            </div>
-
-            <div className="form-section">
-              <label className="section-label">Email Address</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                placeholder="you@cloud.neduet.edu.pk"
-                className="form-input"
-              />
-            </div>
-
-            <div className="form-section">
-              <label className="section-label">Select Department</label>
-              <div className="carousel-wrapper">
-                <button
-                  type="button"
-                  className="carousel-btn carousel-btn-left"
-                  onClick={() => scroll("left")}
-                  aria-label="Scroll left"
-                >
-                  ‹
-                </button>
-                <div className="carousel-container" onMouseDown={handleMouseDown}>
-                  <div className="carousel-items" ref={carouselRef}>
-                    {DEPARTMENTS.map((dept) => {
-                      const IconComponent = dept.icon;
-                      return (
-                        <div
-                          key={dept.value}
-                          className={`dept-card ${
-                            formData.department === dept.value ? "selected" : ""
-                          }`}
-                          onClick={() => selectDepartment(dept.value)}
-                        >
-                          <IconComponent size={32} strokeWidth={1.5} />
-                          <div className="dept-name">{dept.name}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="carousel-btn carousel-btn-right"
-                  onClick={() => scroll("right")}
-                  aria-label="Scroll right"
-                >
-                  ›
-                </button>
-              </div>
-            </div>
-
-            <div className="form-section">
-              <label className="section-label">Year</label>
-              <div className="year-buttons">
-                {[1, 2, 3, 4].map((year) => (
-                  <button
-                    key={year}
-                    type="button"
-                    className={`year-btn ${formData.year === year.toString() ? "active" : ""}`}
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
-                        year: year.toString(),
-                      })
-                    }
-                  >
-                    Year {year}
-                  </button>
-                ))}
-                {formData.department === "0" && (
-                  <button
-                    type="button"
-                    className={`year-btn ${formData.year === "5" ? "active" : ""}`}
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
-                        year: "5",
-                      })
-                    }
-                  >
-                    Year 5
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={denySubmission || !formData.email || !formData.department || !formData.year}
-              className="submit-btn"
-            >
-              {status === "loading" ? (
-                <span className="loading-spinner">⟳</span>
-              ) : (
-                "Notify Me"
-              )}
+        <div className="form-section">
+          <label className="section-label">Select Department</label>
+          <div className="carousel-wrapper">
+            <button type="button" className="carousel-btn carousel-btn-left" onClick={() => scroll("left")} aria-label="Scroll left">
+              ‹
             </button>
+            <div className="carousel-container" onMouseDown={handleMouseDown}>
+              <div className="carousel-items" ref={carouselRef}>
+                {DEPARTMENTS.map((dept) => {
+                  const IconComponent = dept.icon;
+                  return (
+                    <div
+                      key={dept.value}
+                      className={`dept-card ${formData.department === dept.value ? "selected" : ""}`}
+                      onClick={() => selectDepartment(dept.value)}
+                    >
+                      <IconComponent size={32} strokeWidth={1.5} />
+                      <div className="dept-name">{dept.name}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <button type="button" className="carousel-btn carousel-btn-right" onClick={() => scroll("right")} aria-label="Scroll right">
+              ›
+            </button>
+          </div>
+        </div>
 
-            {message && <div className={`status-message ${status}`}>{message}</div>}
-          </form>
-        </>
-      )}
+        <div className="form-section">
+          <label className="section-label">Year</label>
+          <div className="year-buttons">
+            {[1, 2, 3, 4].map((year) => (
+              <button
+                key={year}
+                type="button"
+                className={`year-btn ${formData.year === year.toString() ? "active" : ""}`}
+                onClick={() =>
+                  setFormData({
+                    ...formData,
+                    year: year.toString(),
+                  })
+                }
+              >
+                Year {year}
+              </button>
+            ))}
+            {formData.department === "0" && (
+              <button
+                type="button"
+                className={`year-btn ${formData.year === "5" ? "active" : ""}`}
+                onClick={() =>
+                  setFormData({
+                    ...formData,
+                    year: "5",
+                  })
+                }
+              >
+                Year 5
+              </button>
+            )}
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          disabled={denySubmission || !formData.email || !formData.department || !formData.year}
+          className="submit-btn"
+        >
+          {status === "loading" ? <span className="loading-spinner">⟳</span> : "Notify Me"}
+        </button>
+
+        {message && <div className={`status-message ${status}`}>{message}</div>}
+      </form>
     </div>
   );
-};
+}
 
-export default ResultsNotification;
+function DeleteUserPage() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [deleteStatus, setDeleteStatus] = useState<"loading" | "success" | "error">("loading");
+  const [deleteMessage, setDeleteMessage] = useState("Removing your details...");
+  const deleteRequestSentRef = useRef(false);
+
+  useEffect(() => {
+    if (deleteRequestSentRef.current) return;
+    deleteRequestSentRef.current = true;
+
+    const id = searchParams.get("id");
+    if (!id) {
+      setDeleteStatus("error");
+      setDeleteMessage("Missing deletion id.");
+      return;
+    }
+
+    fetch(apiUrl(`/remove_user?id=${encodeURIComponent(id)}`), {
+      headers: authHeaders,
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("We could not delete your entry.");
+        }
+
+        setDeleteStatus("success");
+        setDeleteMessage("Your email has been removed from the notification list.");
+      })
+      .catch((error: any) => {
+        setDeleteStatus("error");
+        setDeleteMessage(error.message || "Something went wrong while removing your entry.");
+      });
+  }, [searchParams]);
+
+  return (
+    <div className="results-container">
+      <div className="results-form delete-page">
+        <div className={`delete-icon ${deleteStatus}`}>
+          {deleteStatus === "success" ? "✓" : deleteStatus === "error" ? "!" : "…"}
+        </div>
+        <h1 className="delete-title">
+          {deleteStatus === "success" ? "User Deleted" : deleteStatus === "error" ? "Deletion Failed" : "Removing User"}
+        </h1>
+        <p className="delete-message">{deleteMessage}</p>
+        <button type="button" className="submit-btn" onClick={() => navigate("/")}>Back to Home</button>
+      </div>
+    </div>
+  );
+}
