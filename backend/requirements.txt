@@ -6,3 +6,4 @@ motor
 pydantic
 lxml
 aiosmtplib
+redis

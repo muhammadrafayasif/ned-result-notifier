@@ -1,10 +1,12 @@
 from email.message import EmailMessage
 import httpx, asyncio, os, dotenv, aiosmtplib, uuid
+import json
 from fastapi import FastAPI, HTTPException, Response, Header
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
 from lxml import html
+from redis import asyncio as redis
 dotenv.load_dotenv()
 
 # CONSTANTS
@@ -15,6 +17,9 @@ YEARS = {1: '1st', 2: '2nd', 3: '3rd', 4: '4th', 5: '5th'}
 mongo_client = None
 db = None
 col = None
+redis_client = None
+GET_DETAILS_CACHE_KEY = "get_details:latest"
+GET_DETAILS_CACHE_TTL = 60 * 60 * 24 * 2
 
 async def get_mongo_collection():
     global mongo_client, db, col
@@ -23,6 +28,15 @@ async def get_mongo_collection():
         db = mongo_client['users']
         col = db['users']
     return col
+
+async def get_redis_client():
+    global redis_client
+    if redis_client is not None:
+        return redis_client
+
+    redis_url = os.getenv("REDIS_URL")
+    redis_client = redis.from_url(redis_url, encoding="utf-8", decode_responses=True)
+    return redis_client
 
 # FASTAPI CODE
 class User(BaseModel):
@@ -75,6 +89,15 @@ async def get_details(x_app_key: str | None = Header(default=None, alias="X-App-
     if x_app_key != os.getenv("SERVER_KEY"):
         raise HTTPException(status_code=403, detail="Forbidden :(")
 
+    cache = await get_redis_client()
+    if cache is not None:
+        try:
+            cached_value = await cache.get(GET_DETAILS_CACHE_KEY)
+            if cached_value:
+                return json.loads(cached_value)
+        except Exception:
+            cache = None
+
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.get('https://www.neduet.edu.pk/examination_results')
         webpage = resp.content
@@ -85,7 +108,15 @@ async def get_details(x_app_key: str | None = Header(default=None, alias="X-App-
     results_released = table.xpath(".//td[text() = '-'] | .//th[text() = '-']")
     EXAM = text.split('(')[1].split(')')[0].strip()
 
-    return {'all_results_released' : len(results_released) <= 1, 'exam_name': EXAM.title()}
+    payload = {'all_results_released' : len(results_released) <= 1, 'exam_name': EXAM.title()}
+
+    if cache is not None:
+        try:
+            await cache.setex(GET_DETAILS_CACHE_KEY, GET_DETAILS_CACHE_TTL, json.dumps(payload))
+        except Exception:
+            pass
+
+    return payload
 
 @app.post("/check_results")
 async def check_results(x_app_key: str | None = Header(default=None, alias="X-App-Key")):
