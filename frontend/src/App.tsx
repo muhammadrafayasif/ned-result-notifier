@@ -71,7 +71,7 @@ const DEPARTMENTS = [
 ];
 
 const APP_KEY = import.meta.env.VITE_APP_KEY ?? "";
-const BASE_API = import.meta.env.VITE_BASE_API ?? window.location.origin;
+const BASE_API = import.meta.env.VITE_BASE_API;
 
 const authHeaders = {
   "X-App-Key": APP_KEY,
