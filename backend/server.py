@@ -1,6 +1,6 @@
 from email.message import EmailMessage
 import httpx, asyncio, os, dotenv, aiosmtplib, uuid
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Response, Header
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
@@ -42,7 +42,12 @@ app.add_middleware(
 )
 
 @app.post("/insert_user")
-async def store_details(data : User):
+async def store_details(data : User, x_app_key: str | None = Header(default=None, alias="X-App-Key")):
+    print(os.getenv("APP_KEY"))
+    
+    if x_app_key != os.getenv("SERVER_KEY"):
+        raise HTTPException(status_code=403, detail="Forbidden :(")
+
     col = await get_mongo_collection()
     if await col.find_one({"email": data.email}): 
         raise HTTPException(409, "The following email already exists in the database.")
@@ -53,7 +58,10 @@ async def store_details(data : User):
         return Response(status_code=200)
     
 @app.get("/remove_user")
-async def remove_user(id : str):
+async def remove_user(id : str, x_app_key: str | None = Header(default=None, alias="X-App-Key")):
+    if x_app_key != os.getenv("SERVER_KEY"):
+        raise HTTPException(status_code=403, detail="Forbidden :(")
+
     col = await get_mongo_collection()
     user = await col.delete_one({"uniqueID": id})
     if user.deleted_count == 1:
@@ -63,7 +71,10 @@ async def remove_user(id : str):
     
     
 @app.get("/get_details")
-async def get_details():
+async def get_details(x_app_key: str | None = Header(default=None, alias="X-App-Key")):
+    if x_app_key != os.getenv("SERVER_KEY"):
+        raise HTTPException(status_code=403, detail="Forbidden :(")
+
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.get('https://www.neduet.edu.pk/examination_results')
         webpage = resp.content
@@ -77,7 +88,10 @@ async def get_details():
     return {'all_results_released' : len(results_released) <= 1, 'exam_name': EXAM.title()}
 
 @app.post("/check_results")
-async def check_results():
+async def check_results(x_app_key: str | None = Header(default=None, alias="X-App-Key")):
+    if x_app_key != os.getenv("SERVER_KEY"):
+        raise HTTPException(status_code=403, detail="Forbidden :(")
+
     col = await get_mongo_collection()
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.get('https://www.neduet.edu.pk/examination_results')
@@ -117,7 +131,7 @@ async def send_email(to_email, department, year, uniqueID, examName, attachment_
 
     msg = EmailMessage()
     msg['Subject'] = "NEDUET Results Confirmation" if first_time else f"{year} Year Results are Released!"
-    msg['From'] = "NEDUET Result Notifier <ned.resultnotifier@gmail.com>"
+    msg['From'] = "ResultsBot <ned.resultnotifier@gmail.com>"
     msg['To'] = to_email
 
     if not first_time:
@@ -133,7 +147,7 @@ Contributions of any kind are welcome and encouraged!
 Congratulations and best of luck for your next steps!
 <br><br>
 Regards, <br>
-NEDUET Results Bot
+ResultsBot
 """, subtype="html")
     else:
         msg.set_content(f"""
@@ -142,9 +156,9 @@ Hello, <br><br>
 You will be notified as soon as the results for the <b>Department of {department}, {year}</b> Year for the <b>{examName.title()}</b> are released officially on the NEDUET website. 
 <br><br>
 Feel free to star the repository over here (https://github.com/muhammadrafayasif/ned-result-notifier), all contributions are welcome! <br><br>
-Accidentally chose the wrong details? Click <a href="https://www.ned-result-notifier.vercel.app/remove_user?id={uniqueID}">here</a> to remove yourself from the database <br><br>
+Accidentally chose the wrong details? Click <a href="https://neduet-result-notifier.vercel.app/user?id={uniqueID}">here</a> to remove yourself from the database <br><br>
 Regards, <br>
-NEDUET Results Bot
+ResultsBot
 """, subtype="html")
     if attachment_urls:
         async with httpx.AsyncClient() as client:

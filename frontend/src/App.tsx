@@ -1,13 +1,133 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import "./App.css";
+import {
+  Building2,
+  Atom,
+  Brain,
+  TrendingUp,
+  Code,
+  Lock,
+  Database,
+  BookOpen,
+  DollarSign,
+  BookMarked,
+  Gamepad2,
+  Beaker,
+  Briefcase,
+  Layers,
+  Car,
+  Activity,
+  Droplets,
+  HardHat,
+  Cpu,
+  Hammer,
+  Zap,
+  Wifi,
+  UtensilsCrossed,
+  Factory,
+  Box,
+  Wrench,
+  Wind,
+  Radio,
+} from "lucide-react";
+
+const DEPARTMENTS = [
+  { value: "0", name: "Architecture", icon: Building2 },
+  { value: "1", name: "Physics", icon: Atom },
+  { value: "2", name: "Artificial Intelligence", icon: Brain },
+  { value: "3", name: "Computational Finance", icon: TrendingUp },
+  { value: "4", name: "Computer Science", icon: Code },
+  { value: "5", name: "Computer Science (TIEST)", icon: Code },
+  { value: "6", name: "Cyber Security", icon: Lock },
+  { value: "7", name: "Data Science", icon: Database },
+  { value: "8", name: "Development Studies", icon: BookOpen },
+  { value: "9", name: "Economics & Finance", icon: DollarSign },
+  { value: "10", name: "English Linguistics", icon: BookMarked },
+  { value: "11", name: "Gaming and Animation", icon: Gamepad2 },
+  { value: "12", name: "Chemistry", icon: Beaker },
+  { value: "13", name: "Management Sciences", icon: Briefcase },
+  { value: "14", name: "Textile Sciences", icon: Layers },
+  { value: "15", name: "Automotive Engg.", icon: Car },
+  { value: "16", name: "Bio-Medical Engg.", icon: Activity },
+  { value: "17", name: "Chemical Engg.", icon: Droplets },
+  { value: "18", name: "Civil Engg.", icon: HardHat },
+  { value: "19", name: "Civil Engg. (TIEST)", icon: HardHat },
+  { value: "20", name: "Computer Systems Engg.", icon: Cpu },
+  { value: "21", name: "Construction Engg.", icon: Hammer },
+  { value: "22", name: "Electrical Engg.", icon: Zap },
+  { value: "23", name: "Electronics Engg.", icon: Wifi },
+  { value: "24", name: "Food Engg.", icon: UtensilsCrossed },
+  { value: "25", name: "Industrial & Manufacturing Engg.", icon: Factory },
+  { value: "26", name: "Materials Engg.", icon: Box },
+  { value: "27", name: "Mechanical Engg.", icon: Wrench },
+  { value: "28", name: "Metallurgical Engg.", icon: Layers },
+  { value: "29", name: "Petroleum Engg.", icon: Droplets },
+  { value: "30", name: "Polymer & Petrochemical Engg.", icon: Droplets },
+  { value: "31", name: "Software Engg.", icon: Code },
+  { value: "32", name: "Telecommunications Engg.", icon: Radio },
+  { value: "33", name: "Textile Engg.", icon: Wind },
+  { value: "34", name: "Urban Engg.", icon: Building2 },
+];
+
+const APP_KEY = import.meta.env.VITE_APP_KEY ?? "";
+const BASE_API = import.meta.env.VITE_BASE_API;
+
+const authHeaders = {
+  "X-App-Key": APP_KEY,
+};
+
+const apiUrl = (path: string) => `${BASE_API.replace(/\/$/, "")}${path}`;
+
+const isDeletePage = window.location.pathname === "/user";
 
 const ResultsNotification = () => {
   const [allResultsReleased, setResultsReleased] = useState(false);
   const [denySubmission, setSubmissionDisabled] = useState(true);
   const [examName, setExam] = useState("");
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const deleteRequestSentRef = useRef(false);
+  const [deleteStatus, setDeleteStatus] = useState<"loading" | "success" | "error">("loading");
+  const [deleteMessage, setDeleteMessage] = useState("Removing your details...");
 
   useEffect(() => {
-    fetch("https://ned-result-notifier.vercel.app/get_details")
+    if (isDeletePage) {
+      if (deleteRequestSentRef.current) {
+        return;
+      }
+
+      deleteRequestSentRef.current = true;
+
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get("id");
+
+      if (!id) {
+        setDeleteStatus("error");
+        setDeleteMessage("Missing deletion id.");
+        return;
+      }
+
+      fetch(apiUrl(`/remove_user?id=${encodeURIComponent(id)}`), {
+        headers: authHeaders,
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("We could not delete your entry.");
+          }
+
+          setDeleteStatus("success");
+          setDeleteMessage("Your email has been removed from the notification list.");
+        })
+        .catch((error: any) => {
+          setDeleteStatus("error");
+          setDeleteMessage(error.message || "Something went wrong while removing your entry.");
+        });
+
+      return;
+    }
+
+    fetch(apiUrl("/get_details"), {
+      headers: authHeaders,
+    })
       .then((res) => res.json())
       .then((data) => {
         setResultsReleased(data.all_results_released);
@@ -39,6 +159,53 @@ const ResultsNotification = () => {
     });
   };
 
+  const selectDepartment = (value: string) => {
+    setFormData({
+      ...formData,
+      department: value,
+    });
+  };
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!carouselRef.current) return;
+    
+    const startX = e.clientX;
+    const startScrollLeft = carouselRef.current.scrollLeft;
+    const isDragReference = { isDragging: false };
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const distance = Math.abs(moveEvent.clientX - startX);
+      if (!isDragReference.isDragging && distance > 5) {
+        isDragReference.isDragging = true;
+      }
+
+      if (isDragReference.isDragging) {
+        const x = moveEvent.clientX - startX;
+        if (carouselRef.current) {
+          carouselRef.current.scrollLeft = startScrollLeft - x;
+        }
+      }
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const scroll = (direction: "left" | "right") => {
+    if (carouselRef.current) {
+      const scrollAmount = 300;
+      carouselRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
+
   const handleForm = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setStatus("loading");
@@ -47,10 +214,11 @@ const ResultsNotification = () => {
 
     try {
       const response = await fetch(
-        "https://ned-result-notifier.vercel.app/insert_user",
+        apiUrl("/insert_user"),
         {
           method: "POST",
           headers: {
+            ...authHeaders,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ ...formData, examName }),
@@ -79,108 +247,160 @@ const ResultsNotification = () => {
 
   return (
     <div className="results-container">
-      <div
-        className="github-banner"
-        onClick={() =>
-          window.open(
-            "https://www.github.com/muhammadrafayasif/ned-result-notifier",
-            "_blank"
-          )
-        }
-      >
-        <img
-          src="https://cdn.pixabay.com/photo/2022/01/30/13/33/github-6980894_1280.png"
-          alt="GitHub Logo"
-        />
-        View on GitHub
-      </div>
-      <form className="results-form" onSubmit={handleForm}>
-        {allResultsReleased && (
-          <div className={`status-message loading`}>
-            All results have now been officially released, you may view them
-            from the NEDUET website.
+      {isDeletePage ? (
+        <div className="results-form delete-page">
+          <div className={`delete-icon ${deleteStatus}`}>
+            {deleteStatus === "success" ? "✓" : deleteStatus === "error" ? "!" : "…"}
           </div>
-        )}
-        {examName && <div className={`status-message success`}>{examName}</div>}
-        <h2>NEDUET Results Notifier</h2>
-        <p>Enter your details to get emailed when results are released.</p>
+          <h1 className="delete-title">
+            {deleteStatus === "success" ? "User Deleted" : deleteStatus === "error" ? "Deletion Failed" : "Removing User"}
+          </h1>
+          <p className="delete-message">{deleteMessage}</p>
+          <button
+            type="button"
+            className="submit-btn"
+            onClick={() => (window.location.href = "/")}
+          >
+            Back to Home
+          </button>
+        </div>
+      ) : (
+        <>
+          <div
+            className="github-banner"
+            onClick={() =>
+              window.open(
+                "https://www.github.com/muhammadrafayasif/ned-result-notifier",
+                "_blank"
+              )
+            }
+          >
+            <img
+              src="/github.webp"
+              alt="GitHub Logo"
+            />
+            Star on GitHub
+          </div>
 
-        <label>Email Address</label>
-        <input
-          type="email"
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-          placeholder="you@example.com"
-        />
+          <form className="results-form" onSubmit={handleForm}>
+            {examName && <div className={`status-message success exam-name`}>{examName}</div>}
 
-        <label>Department</label>
-        <select
-          name="department"
-          value={formData.department}
-          onChange={handleChange}
-          required
-        >
-          <option value="">Select Department</option>
-          <option value="0">Architecture</option>
-          <option value="1">Physics</option>
-          <option value="2">Artificial Intelligence</option>
-          <option value="3">Computational Finance</option>
-          <option value="4">Computer Science</option>
-          <option value="5">Computer Science (TIEST)</option>
-          <option value="6">Cyber Security</option>
-          <option value="7">Data Science</option>
-          <option value="8">Development Studies</option>
-          <option value="9">Economics & Finance</option>
-          <option value="10">English Linguistics</option>
-          <option value="11">Gaming and Animation</option>
-          <option value="12">Chemistry</option>
-          <option value="13">Management Sciences</option>
-          <option value="14">Textile Sciences</option>
-          <option value="15">Automotive Engg.</option>
-          <option value="16">Bio-Medical Engg.</option>
-          <option value="17">Chemical Engg.</option>
-          <option value="18">Civil Engg.</option>
-          <option value="19">Civil Engg. (TIEST)</option>
-          <option value="20">Computer Systems Engg.</option>
-          <option value="21">Construction Engg.</option>
-          <option value="22">Electrical Engg.</option>
-          <option value="23">Electronics Engg.</option>
-          <option value="24">Food Engg.</option>
-          <option value="25">Industrial & Manufacturing Engg.</option>
-          <option value="26">Materials Engg.</option>
-          <option value="27">Mechanical Engg.</option>
-          <option value="28">Metallurgical Engg.</option>
-          <option value="29">Petroleum Engg.</option>
-          <option value="30">Polymer & Petrochemical Engg.</option>
-          <option value="31">Software Engg.</option>
-          <option value="32">Telecommunications Engg.</option>
-          <option value="33">Textile Engg.</option>
-          <option value="34">Urban Engg.</option>
-        </select>
+            {allResultsReleased && (
+              <div className={`status-message loading`}>
+                All results have now been officially released, you may view them
+                from the NEDUET website.
+              </div>
+            )}
 
-        <label>Year</label>
-        <select
-          name="year"
-          value={formData.year}
-          onChange={handleChange}
-          required
-        >
-          <option value="">Select Year</option>
-          <option value="1">1st Year</option>
-          <option value="2">2nd Year</option>
-          <option value="3">3rd Year</option>
-          <option value="4">4th Year</option>
-          {formData.department == "0" && <option value="5">5th Year</option>}
-        </select>
+            <div className="form-header">
+              <h1>NEDUET Results Notifier</h1>
+            </div>
 
-        <button type="submit" disabled={denySubmission}>
-          {status === "loading" ? "Submitting..." : "Notify Me"}
-        </button>
+            <div className="form-section">
+              <label className="section-label">Email Address</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                placeholder="you@cloud.neduet.edu.pk"
+                className="form-input"
+              />
+            </div>
 
-        {message && <div className={`status-message ${status}`}>{message}</div>}
-      </form>
+            <div className="form-section">
+              <label className="section-label">Select Department</label>
+              <div className="carousel-wrapper">
+                <button
+                  type="button"
+                  className="carousel-btn carousel-btn-left"
+                  onClick={() => scroll("left")}
+                  aria-label="Scroll left"
+                >
+                  ‹
+                </button>
+                <div className="carousel-container" onMouseDown={handleMouseDown}>
+                  <div className="carousel-items" ref={carouselRef}>
+                    {DEPARTMENTS.map((dept) => {
+                      const IconComponent = dept.icon;
+                      return (
+                        <div
+                          key={dept.value}
+                          className={`dept-card ${
+                            formData.department === dept.value ? "selected" : ""
+                          }`}
+                          onClick={() => selectDepartment(dept.value)}
+                        >
+                          <IconComponent size={32} strokeWidth={1.5} />
+                          <div className="dept-name">{dept.name}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="carousel-btn carousel-btn-right"
+                  onClick={() => scroll("right")}
+                  aria-label="Scroll right"
+                >
+                  ›
+                </button>
+              </div>
+            </div>
+
+            <div className="form-section">
+              <label className="section-label">Year</label>
+              <div className="year-buttons">
+                {[1, 2, 3, 4].map((year) => (
+                  <button
+                    key={year}
+                    type="button"
+                    className={`year-btn ${formData.year === year.toString() ? "active" : ""}`}
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        year: year.toString(),
+                      })
+                    }
+                  >
+                    Year {year}
+                  </button>
+                ))}
+                {formData.department === "0" && (
+                  <button
+                    type="button"
+                    className={`year-btn ${formData.year === "5" ? "active" : ""}`}
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        year: "5",
+                      })
+                    }
+                  >
+                    Year 5
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={denySubmission || !formData.email || !formData.department || !formData.year}
+              className="submit-btn"
+            >
+              {status === "loading" ? (
+                <span className="loading-spinner">⟳</span>
+              ) : (
+                "Notify Me"
+              )}
+            </button>
+
+            {message && <div className={`status-message ${status}`}>{message}</div>}
+          </form>
+        </>
+      )}
     </div>
   );
 };
