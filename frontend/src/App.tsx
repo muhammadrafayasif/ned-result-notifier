@@ -118,8 +118,15 @@ function HomePage() {
       .catch((err) => console.error("Error fetching details:", err));
   }, []);
 
+  const clearSubmissionLock = () => {
+    if (status === "error") {
+      setSubmissionDisabled(false);
+    }
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     if (e.target.value === "UUDDLRLRBAS") setSubmissionDisabled(false);
+    else clearSubmissionLock();
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -127,6 +134,7 @@ function HomePage() {
   };
 
   const selectDepartment = (value: string) => {
+    clearSubmissionLock();
     setFormData({
       ...formData,
       department: value,
@@ -215,7 +223,7 @@ function HomePage() {
 
         {allResultsReleased && (
           <div className="status-message loading">
-            All results have now been officially released, you may view them from the NEDUET website.
+            All results have now been officially released, you may view them from the <a href="https://www.neduet.edu.pk/examination_results">NEDUET website</a>.
           </div>
         )}
 
@@ -224,7 +232,7 @@ function HomePage() {
         </div>
 
         <div className="form-section">
-          <label className="section-label">Email Address</label>
+          <label className="section-label">Cloud Email Address</label>
           <input
             type="email"
             name="email"
@@ -273,12 +281,13 @@ function HomePage() {
                 key={year}
                 type="button"
                 className={`year-btn ${formData.year === year.toString() ? "active" : ""}`}
-                onClick={() =>
+                onClick={() => {
+                  clearSubmissionLock();
                   setFormData({
                     ...formData,
                     year: year.toString(),
-                  })
-                }
+                  });
+                }}
               >
                 Year {year}
               </button>
@@ -287,12 +296,13 @@ function HomePage() {
               <button
                 type="button"
                 className={`year-btn ${formData.year === "5" ? "active" : ""}`}
-                onClick={() =>
+                onClick={() => {
+                  clearSubmissionLock();
                   setFormData({
                     ...formData,
                     year: "5",
-                  })
-                }
+                  });
+                }}
               >
                 Year 5
               </button>

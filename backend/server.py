@@ -1,7 +1,7 @@
 from email.message import EmailMessage
 import httpx, asyncio, os, dotenv, aiosmtplib, uuid
 import json
-from fastapi import FastAPI, HTTPException, Response, Header
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Response, Header
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
@@ -20,6 +20,8 @@ col = None
 redis_client = None
 GET_DETAILS_CACHE_KEY = "get_details:latest"
 GET_DETAILS_CACHE_TTL = 60 * 60 * 24 * 2
+CHECK_RESULTS_LOCK_KEY = "check_results:lock"
+CHECK_RESULTS_LOCK_TTL = 60 * 60
 
 async def get_mongo_collection():
     global mongo_client, db, col
@@ -57,14 +59,15 @@ app.add_middleware(
 
 @app.post("/insert_user")
 async def store_details(data : User, x_app_key: str | None = Header(default=None, alias="X-App-Key")):
-    print(os.getenv("APP_KEY"))
+    if 'neduet.edu.pk' not in data.email:
+        raise HTTPException(403, "You can only use your cloud NEDUET email address :/")
     
     if x_app_key != os.getenv("SERVER_KEY"):
         raise HTTPException(status_code=403, detail="Forbidden :(")
 
     col = await get_mongo_collection()
     if await col.find_one({"email": data.email}): 
-        raise HTTPException(409, "The following email already exists in the database.")
+        raise HTTPException(409, "The following email already exists in the database. O_O")
     else: 
         uniqueID = str(uuid.uuid4())
         await col.insert_one({"email": data.email, "department": int(data.department), "year": int(data.year), "examName": data.examName, "uniqueID": uniqueID, "notify": True})
@@ -119,42 +122,65 @@ async def get_details(x_app_key: str | None = Header(default=None, alias="X-App-
     return payload
 
 @app.post("/check_results")
-async def check_results(x_app_key: str | None = Header(default=None, alias="X-App-Key")):
+async def check_results(background_tasks: BackgroundTasks, x_app_key: str | None = Header(default=None, alias="X-App-Key")):
     if x_app_key != os.getenv("SERVER_KEY"):
         raise HTTPException(status_code=403, detail="Forbidden :(")
 
-    col = await get_mongo_collection()
-    async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.get('https://www.neduet.edu.pk/examination_results')
-        webpage = resp.content
-    
-    doc = html.fromstring(webpage)
-    table = doc.xpath('//table')[1]
-    images = []
-    for tr in table.xpath('.//tr')[3:]:
-        row = []
-        for td in tr.xpath('./td'):
-            links = [a.get('href') for a in td.xpath('.//a[@href]')]
-            row.append(links)
-        if row != []: images.append(row)
-    
-    tasks = []
-    users_to_update = []
-    users = col.find({'notify': True})
-    async for user in users:
-        results = images[user['department']][user['year']]
-        if results:
-            tasks.append(send_email(user['email'], user['department'], user['year'], user['uniqueID'], user['examName'], attachment_urls = results))
-            users_to_update.append(user['_id'])
+    cache = await get_redis_client()
+    if cache is not None:
+        try:
+            lock_acquired = await cache.set(CHECK_RESULTS_LOCK_KEY, "running", ex=CHECK_RESULTS_LOCK_TTL, nx=True)
+            if not lock_acquired:
+                return Response(status_code=202, content="Results check is already running.")
+        except Exception:
+            cache = None
 
-    for i in range(0, len(tasks), 10):
-        await asyncio.gather(*tasks[i:i+10])
-        if i + 10 < len(tasks):
-            await asyncio.sleep(1)
+    background_tasks.add_task(process_check_results)
+    return Response(status_code=202, content="Results check queued.")
 
-    if users_to_update:
-        await col.update_many({'_id': {'$in': users_to_update}}, {'$set': {'notify': False}})
-    return Response(status_code=200)
+
+async def process_check_results():
+    cache = None
+    try:
+        col = await get_mongo_collection()
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get('https://www.neduet.edu.pk/examination_results')
+            webpage = resp.content
+
+        doc = html.fromstring(webpage)
+        table = doc.xpath('//table')[1]
+        images = []
+        for tr in table.xpath('.//tr')[3:]:
+            row = []
+            for td in tr.xpath('./td'):
+                links = [a.get('href') for a in td.xpath('.//a[@href]')]
+                row.append(links)
+            if row != []:
+                images.append(row)
+
+        tasks = []
+        users_to_update = []
+        users = col.find({'notify': True})
+        async for user in users:
+            results = images[user['department']][user['year']]
+            if results:
+                tasks.append(send_email(user['email'], user['department'], user['year'], user['uniqueID'], user['examName'], attachment_urls=results))
+                users_to_update.append(user['_id'])
+
+        for i in range(0, len(tasks), 10):
+            await asyncio.gather(*tasks[i:i+10])
+            if i + 10 < len(tasks):
+                await asyncio.sleep(1)
+
+        if users_to_update:
+            await col.update_many({'_id': {'$in': users_to_update}}, {'$set': {'notify': False}})
+    finally:
+        cache = await get_redis_client()
+        if cache is not None:
+            try:
+                await cache.delete(CHECK_RESULTS_LOCK_KEY)
+            except Exception:
+                pass
 
 async def send_email(to_email, department, year, uniqueID, examName, attachment_urls = None, first_time = False):
     department = DEPTS[department]
@@ -184,7 +210,7 @@ ResultsBot
         msg.set_content(f"""
 Hello, <br><br>
 
-You will be notified as soon as the results for the <b>Department of {department}, {year}</b> Year for the <b>{examName.title()}</b> are released officially on the NEDUET website. 
+You will be notified as soon as the results for the <b>Department of {department}, {year} Year</b> for the <b>{examName.title()}</b> are released officially on the NEDUET website. 
 <br><br>
 Feel free to star the repository over here (https://github.com/muhammadrafayasif/ned-result-notifier), all contributions are welcome! <br><br>
 Accidentally chose the wrong details? Click <a href="https://neduet-result-notifier.vercel.app/user?id={uniqueID}">here</a> to remove yourself from the database <br><br>
