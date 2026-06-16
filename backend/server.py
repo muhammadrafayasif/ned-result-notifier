@@ -1,6 +1,7 @@
 from email.message import EmailMessage
 import httpx, asyncio, os, dotenv, aiosmtplib, uuid
 import json
+import logging
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Response, Header
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -8,6 +9,7 @@ from pydantic import BaseModel
 from lxml import html
 from redis import asyncio as redis
 dotenv.load_dotenv()
+logger = logging.getLogger(__name__)
 
 # CONSTANTS
 DEPTS = {0: 'Architecture', 1: 'Physics', 2: 'Artificial Intelligence', 3: 'Computational Finance', 4: 'Computer Science', 5: 'Computer Science (TIEST)', 6: 'Cyber Security', 7: 'Data Science', 8: 'Development Studies', 9: 'Economics & Finance', 10: 'English Linguistics', 11: 'Gaming and Animation', 12: 'Chemistry', 13: 'Management Sciences', 14: 'Textile Sciences', 15: 'Automotive Engg.', 16: 'Bio-Medical Engg.', 17: 'Chemical Engg.', 18: 'Civil Engg.', 19: 'Civil Engg. (TIEST)', 20: 'Computer Systems Engg.', 21: 'Construction Engg.', 22: 'Electrical Engg.', 23: 'Electronics Engg.', 24: 'Food Engg.', 25: 'Industrial & Manufacturing Engg.', 26: 'Materials Engg.', 27: 'Mechanical Engg.', 28: 'Metallurgical Engg.', 29: 'Petroleum Engg.', 30: 'Polymer & Petrochemical Engg.', 31: 'Software Engg.', 32: 'Telecommunications Engg.', 33: 'Textile Engg.', 34: 'Urban Engg.'}
@@ -65,14 +67,18 @@ async def store_details(data : User, x_app_key: str | None = Header(default=None
     if x_app_key != os.getenv("SERVER_KEY"):
         raise HTTPException(status_code=403, detail="Forbidden :(")
 
-    col = await get_mongo_collection()
-    if await col.find_one({"email": data.email}): 
-        raise HTTPException(409, "The following email already exists in the database. O_O")
-    else: 
-        uniqueID = str(uuid.uuid4())
-        await col.insert_one({"email": data.email, "department": int(data.department), "year": int(data.year), "examName": data.examName, "uniqueID": uniqueID, "notify": True})
-        await send_email(data.email, data.department, data.year, uniqueID, data.examName, first_time=True)
-        return Response(status_code=200)
+    try:
+        col = await get_mongo_collection()
+        if await col.find_one({"email": data.email}): 
+            raise HTTPException(409, "The following email already exists in the database. O_O")
+        else: 
+            uniqueID = str(uuid.uuid4())
+            await send_email(data.email, data.department, data.year, uniqueID, data.examName, first_time=True)
+            await col.insert_one({"email": data.email, "department": int(data.department), "year": int(data.year), "examName": data.examName, "uniqueID": uniqueID, "notify": True})
+            return Response(status_code=200)
+    except Exception as e:
+        logger.exception("Unhandled exception occurred")
+        raise HTTPException(500, "Something went wrong :/, try again in a while...")
     
 @app.get("/remove_user")
 async def remove_user(id : str, x_app_key: str | None = Header(default=None, alias="X-App-Key")):

@@ -138,6 +138,7 @@ function HomePage() {
     setFormData({
       ...formData,
       department: value,
+      year: "1",
     });
   };
 
