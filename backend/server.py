@@ -21,7 +21,7 @@ db = None
 col = None
 redis_client = None
 GET_DETAILS_CACHE_KEY = "get_details:latest"
-GET_DETAILS_CACHE_TTL = 60 * 60 * 24 * 2
+GET_DETAILS_CACHE_TTL = 60 * 60 * 24
 CHECK_RESULTS_LOCK_KEY = "check_results:lock"
 CHECK_RESULTS_LOCK_TTL = 60 * 60
 
@@ -76,6 +76,10 @@ async def store_details(data : User, x_app_key: str | None = Header(default=None
             await send_email(data.email, data.department, data.year, uniqueID, data.examName, first_time=True)
             await col.insert_one({"email": data.email, "department": int(data.department), "year": int(data.year), "examName": data.examName, "uniqueID": uniqueID, "notify": True})
             return Response(status_code=200)
+    
+    except HTTPException as e:
+        raise e
+    
     except Exception as e:
         logger.exception("Unhandled exception occurred")
         raise HTTPException(500, "Something went wrong :/, try again in a while...")
@@ -180,6 +184,7 @@ async def process_check_results():
 
         if users_to_update:
             await col.update_many({'_id': {'$in': users_to_update}}, {'$set': {'notify': False}})
+            await col.delete_many({'notify': False})
     finally:
         cache = await get_redis_client()
         if cache is not None:

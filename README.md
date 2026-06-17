@@ -1,8 +1,6 @@
 ![Cron job status](https://api.cron-job.org/jobs/7053319/27d31be07bcfed44/status-7.svg)
 [![Vercel](https://vercelbadge.vercel.app/api/muhammadrafayasif/ned-result-notifier)](https://neduet-result-notifier.vercel.app)
 
->All results are currently released, therefore this project will remain inactive until the next semester or summer examinations.
-
 # NEDUET Result Notifier
 This is a website that sends you an email whenever your respective department results are released officially.
 
