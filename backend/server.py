@@ -115,13 +115,25 @@ async def get_details(x_app_key: str | None = Header(default=None, alias="X-App-
         resp = await client.get('https://www.neduet.edu.pk/examination_results')
         webpage = resp.content
     
-    doc = html.fromstring(webpage)
-    text = doc.xpath('//a[@id="Bachelors"]/parent::th')[0].text_content()
-    table = doc.xpath('//table')[1]
-    results_released = table.xpath(".//td[text() = '-'] | .//th[text() = '-']")
-    EXAM = text.split('(')[1].split(')')[0].strip()
+        doc = html.fromstring(webpage)
+        text = doc.xpath('//a[@id="Bachelors"]/parent::th')[0].text_content()
+        table = doc.xpath('//table')[1]
+        results_released = table.xpath(".//td[text() = '-'] | .//th[text() = '-']")
+        EXAM = text.split('(')[1].split(')')[0].strip()
 
-    payload = {'all_results_released' : len(results_released) <= 1, 'exam_name': EXAM.title()}
+        # Check current status of the cron job
+        resp = await client.get("https://api.cron-job.org/jobs/7053319", headers={"Authorization": f"Bearer {os.getenv('CRON_JOB_API_KEY')}", 'Content-Type': 'application/json'})
+        is_enabled = resp.json().get("jobDetails").get("enabled")
+
+        # Once all results are released, disable the cron job to avoid unnecessary checks
+        # And if results are not released and cron job is disabled, enable the cron job to check again
+        if len(results_released) <= 2 and is_enabled:
+            await client.patch("https://api.cron-job.org/jobs/7053319", headers={"Authorization": f"Bearer {os.getenv('CRON_JOB_API_KEY')}", 'Content-Type': 'application/json'}, json={"job": {"enabled": False}})
+        elif not is_enabled and len(results_released) > 2:
+            await client.patch("https://api.cron-job.org/jobs/7053319", headers={"Authorization": f"Bearer {os.getenv('CRON_JOB_API_KEY')}", 'Content-Type': 'application/json'}, json={"job": {"enabled": True}})
+
+
+    payload = {'all_results_released' : len(results_released) <= 2, 'exam_name': EXAM.title()}
 
     if cache is not None:
         try:
